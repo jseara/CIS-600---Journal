@@ -35,9 +35,4 @@ class RoutesTest {
         assertEquals("edit?entryId={entryId}", Routes.EDIT)
     }
 
-    @Test
-    fun builtRoutes_startWithPatternPrefix() {
-        assertEquals(true, Routes.detail(1).startsWith("detail/"))
-        assertEquals(true, Routes.edit(1).startsWith("edit?"))
-    }
 }

@@ -47,7 +47,7 @@ app/src/main/java/com/example/journal/
     ├── navigation/              Routes and the single NavHost
     ├── list/ detail/ edit/      one stateless screen composable each
     ├── common/                  date formatter, snackbar helper, back button
-    └── theme/                   Material 3 theme (template default)
+    └── theme/                   Material 3 theme, theme seeds, theme picker dialog
 ```
 
 ## Route design
@@ -96,6 +96,37 @@ shows it and immediately clears it, so it appears once and doesn't reappear on r
 the same message also triggers the scroll to the top. The scroll and the snackbar run in separate
 coroutines, so neither one cancels the other, and the message is still cleared exactly once.
 
+## Theme picker
+
+The List screen's top bar has two extra buttons that restyle the whole app (Detail and Edit pick up
+the change too, though their top bars don't show the buttons):
+
+- **Light/dark toggle.** The app follows the system's light/dark mode (including when the system
+  setting changes) until you tap the button; from then on your choice wins. The icon shows what
+  tapping will switch *to* (a sun in dark mode, a moon in light mode).
+- **Theme color (palette icon).** Opens a dialog with a swipeable row of overlapping color
+  circles; the centered one is the choice. The first circle is **Default** (no seed: wallpaper
+  colors on Android 12+, the template's purple scheme below that), drawn in the primary color the
+  app would use without a seed; it is followed by ten seed colors. The dialog opens on the applied
+  seed, or on Default if none is applied. While you swipe, the whole app recolors live behind a
+  lightly dimmed dialog. **Apply** keeps the choice (picking Default removes the seed);
+  **Cancel**, back or tapping outside restores the previous one. TalkBack reads each circle as its
+  name, as a radio button in one group.
+
+How it works: `MainActivity` holds a dark-mode override (`null` = follow the system) and the seed
+(saved as an ARGB `Int`, because `Color` can't go in a saved-state `Bundle`) in `rememberSaveable`,
+plus a temporary preview used only while the dialog is open. The preview needs its own "previewing"
+flag, because a `null` preview color means "preview Default". These are passed down to `JournalTheme`, and as plain values and
+lambdas through `JournalNavHost` to `ListScreen`. `JournalTheme` uses
+[MaterialKolor](https://github.com/jordond/MaterialKolor) to generate a complete Material 3 scheme
+from the seed, and `animateColorScheme` fades between schemes instead of jumping. The system bar
+icons follow the app's own light/dark setting (via `enableEdgeToEdge` with `SystemBarStyle.auto`),
+so they stay readable when the app and the system disagree. A plain `enableEdgeToEdge()` in
+`onCreate` makes the very first frame edge-to-edge, and the styled call is re-applied whenever dark
+mode changes. A `Surface` in the theme's background color sits behind the NavHost, so screen
+crossfades in dark mode don't flash the light window background. The picker was ported from my CIS 600
+Material Design project, without that project's fonts and custom palette.
+
 ## Decisions made
 
 - **Dependencies** (all in `gradle/libs.versions.toml`):
@@ -104,6 +135,23 @@ coroutines, so neither one cancels the other, and the message is still cleared e
     sharing one `lifecycle` version key with the existing `lifecycle-runtime-ktx`.
   - `androidx.compose.material:material-icons-core` (version from the Compose BOM, 1.7.8). Material 3
     1.4 no longer pulls in the icons, so the Add, Edit, Delete and back arrow icons need it explicitly.
+  - `com.materialkolor:material-kolor` **4.0.5**, for the theme picker. That's the version my other
+    project uses with the same Compose BOM and Kotlin version. (5.0.1 is newer, but I didn't move to
+    a new major version without checking it against these.)
+- **Theme icons as vector drawables.** The dark mode, light mode and palette icons aren't in
+  `material-icons-core`. Instead of adding `material-icons-extended` (a very large library, and release
+  builds here don't shrink unused code), the three icons are vector drawables in `res/drawable`,
+  copied from Google's Material icons.
+- **No seed = today's colors.** Until a color is applied (or after Default is applied), the app uses
+  the same scheme as before: wallpaper ("Material You") colors on Android 12+, and the template's
+  purple scheme on older versions. `defaultColorScheme()` in `Theme.kt` returns that scheme, and the
+  picker uses it to draw the Default circle.
+- **Default is a picker page, not a seed.** `ThemeSeeds` stays the list of ten real colors; the
+  picker's pages are `ThemePickerPages` = `null` (Default) followed by those ten. `initialSeedPage`
+  works on `List<Int?>`, so a `null` selection finds the Default page.
+- **Theme choices aren't saved when the app closes.** Like the source project, the light/dark
+  override and the seed live in `rememberSaveable`, so they survive rotation but reset when the app
+  restarts. The owner chose not to add persistence (DataStore or SharedPreferences) for now.
 - **Dates without `java.time`:** minSdk is 24 and `java.time` needs API 26 unless core library
   desugaring is enabled. I used `java.util.Calendar` for day boundaries and `java.text.DateFormat`
   (medium date + short time, in the user's locale) for display, so no extra build setup is needed.

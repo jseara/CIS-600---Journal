@@ -13,10 +13,17 @@ class SeedDataTest {
 
     private val now = at(2025, 6, 18, 15, 30)
 
-    private fun groupOfId(id: Int, at: Long = now): EntryGroup {
-        val entry = seedEntries(at, NEW_YORK).first { it.id == id }
-        return groupFor(entry.timestamp, at, NEW_YORK)
-    }
+    /** The expected layout: which entry ids belong in which section, per the seed-data spec. */
+    private val expectedLayout = listOf(
+        EntryGroup.TODAY to listOf(1, 2, 3),
+        EntryGroup.THIS_WEEK to listOf(4, 5, 6, 7),
+        EntryGroup.OLDER to listOf(8, 9, 10),
+    )
+
+    /** Seeds at [launch], groups the result, and returns each section as (group, sorted ids). */
+    private fun layoutAt(launch: Long) =
+        groupEntries(seedEntries(launch, NEW_YORK), launch, NEW_YORK)
+            .map { it.group to it.entries.map { e -> e.id }.sorted() }
 
     @Test
     fun seedEntries_returnsTenEntriesWithUniqueIds() {
@@ -31,59 +38,31 @@ class SeedDataTest {
     }
 
     @Test
-    fun seedEntries_idsOneToThree_areToday() {
-        (1..3).forEach { assertEquals("id $it", EntryGroup.TODAY, groupOfId(it)) }
+    fun seedEntries_groupedByGroupEntries_hasExpectedIdsPerSection() {
+        assertEquals(expectedLayout, layoutAt(now))
     }
 
     @Test
-    fun seedEntries_idsFourToSeven_areThisWeek() {
-        (4..7).forEach { assertEquals("id $it", EntryGroup.THIS_WEEK, groupOfId(it)) }
+    fun seedEntries_launchedJustAfterMidnight_keepsExpectedLayout() {
+        // 00:05 is the hard case: "now minus a few hours" would put today's entries on yesterday.
+        assertEquals(expectedLayout, layoutAt(at(2025, 6, 18, 0, 5)))
     }
 
     @Test
-    fun seedEntries_idsEightToTen_areOlder() {
-        (8..10).forEach { assertEquals("id $it", EntryGroup.OLDER, groupOfId(it)) }
+    fun seedEntries_launchedAtExactMidnight_keepsExpectedLayout() {
+        assertEquals(expectedLayout, layoutAt(at(2025, 6, 18)))
     }
 
     @Test
-    fun seedEntries_groupedByGroupEntries_hasThreeSectionsOfThreeFourThree() {
-        val sections = groupEntries(seedEntries(now, NEW_YORK), now, NEW_YORK)
-        assertEquals(
-            listOf(EntryGroup.TODAY, EntryGroup.THIS_WEEK, EntryGroup.OLDER),
-            sections.map { it.group },
-        )
-        assertEquals(listOf(3, 4, 3), sections.map { it.entries.size })
+    fun seedEntries_launchedJustBeforeMidnight_keepsExpectedLayout() {
+        assertEquals(expectedLayout, layoutAt(at(2025, 6, 18, 23, 59)))
     }
 
     @Test
-    fun seedEntries_launchedJustAfterMidnight_todayEntriesStayToday() {
-        // 00:05 is the hard case: "now minus a few hours" would fall on yesterday.
-        val justAfterMidnight = at(2025, 6, 18, 0, 5)
-        (1..3).forEach {
-            assertEquals("id $it", EntryGroup.TODAY, groupOfId(it, justAfterMidnight))
-        }
-    }
-
-    @Test
-    fun seedEntries_launchedAtExactMidnight_stillThreeSections() {
-        val midnight = at(2025, 6, 18)
-        val sections = groupEntries(seedEntries(midnight, NEW_YORK), midnight, NEW_YORK)
-        assertEquals(listOf(3, 4, 3), sections.map { it.entries.size })
-    }
-
-    @Test
-    fun seedEntries_launchedJustBeforeMidnight_stillThreeSections() {
-        val lateNight = at(2025, 6, 18, 23, 59)
-        val sections = groupEntries(seedEntries(lateNight, NEW_YORK), lateNight, NEW_YORK)
-        assertEquals(listOf(3, 4, 3), sections.map { it.entries.size })
-    }
-
-    @Test
-    fun seedEntries_launchedAroundDaylightSavingChange_stillThreeSections() {
-        // Both the spring-forward and fall-back weeks must keep the 3/4/3 split.
+    fun seedEntries_launchedAroundDaylightSavingChange_keepsExpectedLayout() {
+        // Both the spring-forward and fall-back weeks must keep the same layout.
         listOf(at(2025, 3, 11, 9), at(2025, 11, 4, 9)).forEach { launch ->
-            val sections = groupEntries(seedEntries(launch, NEW_YORK), launch, NEW_YORK)
-            assertEquals(listOf(3, 4, 3), sections.map { it.entries.size })
+            assertEquals(expectedLayout, layoutAt(launch))
         }
     }
 }

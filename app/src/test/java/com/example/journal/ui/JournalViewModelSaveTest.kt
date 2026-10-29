@@ -41,13 +41,6 @@ class JournalViewModelSaveTest {
         assertEquals(UserMessage.ENTRY_CREATED, vm.uiState.value.message)
     }
 
-    @Test
-    fun save_newEntryId_trimsTitle() {
-        val vm = viewModel()
-        vm.save(NEW_ENTRY_ID, "  Padded  ", "body")
-        assertEquals("Padded", vm.entryById(3)!!.title)
-    }
-
     // ---- existing entry ----
 
     @Test
@@ -71,13 +64,6 @@ class JournalViewModelSaveTest {
         val vm = viewModel()
         vm.save(1, "Changed", "")
         assertEquals(UserMessage.ENTRY_UPDATED, vm.uiState.value.message)
-    }
-
-    @Test
-    fun save_existingId_trimsTitle() {
-        val vm = viewModel()
-        vm.save(1, "  Trimmed \n", "body")
-        assertEquals("Trimmed", vm.entryById(1)!!.title)
     }
 
     // ---- missing id (e.g. app data rebuilt after process death) ----

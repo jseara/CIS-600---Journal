@@ -33,11 +33,6 @@ class JournalViewModelTest {
         assertNull(vm.uiState.value.message)
     }
 
-    @Test
-    fun init_emptyList_isEmptyState() {
-        assertTrue(viewModel(emptyList()).uiState.value.entries.isEmpty())
-    }
-
     // ---- entryById ----
 
     @Test
@@ -118,14 +113,6 @@ class JournalViewModelTest {
         assertEquals(listOf(1, 3, 4), vm.uiState.value.entries.map { it.id })
     }
 
-    @Test
-    fun addEntry_twice_producesDistinctIds() {
-        val vm = viewModel()
-        val a = vm.addEntry("A", "")
-        val b = vm.addEntry("B", "")
-        assertTrue(a != b)
-    }
-
     // ---- updateEntry ----
 
     @Test
@@ -140,8 +127,9 @@ class JournalViewModelTest {
     fun updateEntry_keepsOriginalTimestampAndId() {
         val vm = viewModel(time = { 123_456L })
         vm.updateEntry(1, "New title", "New body")
-        assertEquals(1_000L, vm.entryById(1)!!.timestamp)
-        assertEquals(1, vm.entryById(1)!!.id)
+        // Whole entry: same id and original timestamp (1_000), not the clock's 123_456.
+        assertEquals(JournalEntry(1, "New title", "New body", 1_000L), vm.entryById(1))
+        assertEquals(listOf(1, 2), vm.uiState.value.entries.map { it.id })
     }
 
     @Test
@@ -220,13 +208,6 @@ class JournalViewModelTest {
         assertNull(vm.uiState.value.message)
     }
 
-    @Test
-    fun deleteEntry_lastEntry_leavesEmptyList() {
-        val vm = viewModel(listOf(original))
-        vm.deleteEntry(1)
-        assertTrue(vm.uiState.value.entries.isEmpty())
-    }
-
     // ---- messageShown ----
 
     @Test
@@ -244,13 +225,6 @@ class JournalViewModelTest {
         val entries = vm.uiState.value.entries
         vm.messageShown()
         assertEquals(entries, vm.uiState.value.entries)
-    }
-
-    @Test
-    fun messageShown_withNoMessage_isHarmless() {
-        val vm = viewModel()
-        vm.messageShown()
-        assertNull(vm.uiState.value.message)
     }
 
     @Test

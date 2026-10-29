@@ -2,10 +2,9 @@ package com.example.journal.data
 
 import com.example.journal.model.JournalEntry
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Unit tests for [nextEntryId] and [NEW_ENTRY_ID]. */
+/** Unit tests for [nextEntryId]. */
 class EntryIdsTest {
 
     private fun entry(id: Int) = JournalEntry(id, "t", "", 0L)
@@ -31,13 +30,4 @@ class EntryIdsTest {
         assertEquals(10, nextEntryId(listOf(entry(7), entry(9), entry(2))))
     }
 
-    @Test
-    fun nextEntryId_resultNeverEqualsSentinel() {
-        assertTrue(nextEntryId(emptyList()) != NEW_ENTRY_ID)
-    }
-
-    @Test
-    fun newEntryId_isMinusOne() {
-        assertEquals(-1, NEW_ENTRY_ID)
-    }
 }

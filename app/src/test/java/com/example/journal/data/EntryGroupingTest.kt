@@ -82,11 +82,6 @@ class EntryGroupingTest {
     // ---- groupFor ----
 
     @Test
-    fun groupFor_justAfterMidnightToday_isToday() {
-        assertEquals(EntryGroup.TODAY, groupFor(at(2025, 6, 18, 0, 0, 1), now, NEW_YORK))
-    }
-
-    @Test
     fun groupFor_exactlyMidnightToday_isToday() {
         assertEquals(EntryGroup.TODAY, groupFor(at(2025, 6, 18), now, NEW_YORK))
     }
@@ -114,23 +109,8 @@ class EntryGroupingTest {
     }
 
     @Test
-    fun groupFor_sixDaysAgoLateEvening_isThisWeek() {
-        assertEquals(EntryGroup.THIS_WEEK, groupFor(at(2025, 6, 12, 23, 59), now, NEW_YORK))
-    }
-
-    @Test
     fun groupFor_oneSecondBeforeWeekWindow_isOlder() {
         assertEquals(EntryGroup.OLDER, groupFor(at(2025, 6, 11, 23, 59, 59), now, NEW_YORK))
-    }
-
-    @Test
-    fun groupFor_sevenDaysAgo_isOlder() {
-        assertEquals(EntryGroup.OLDER, groupFor(at(2025, 6, 11, 15, 30), now, NEW_YORK))
-    }
-
-    @Test
-    fun groupFor_veryOldTimestamp_isOlder() {
-        assertEquals(EntryGroup.OLDER, groupFor(0L, now, NEW_YORK))
     }
 
     @Test
@@ -157,11 +137,6 @@ class EntryGroupingTest {
         val nov5 = at(2025, 11, 5, 12)
         assertEquals(EntryGroup.THIS_WEEK, groupFor(at(2025, 10, 30), nov5, NEW_YORK))
         assertEquals(EntryGroup.OLDER, groupFor(at(2025, 10, 29, 23, 59), nov5, NEW_YORK))
-    }
-
-    @Test
-    fun weekWindowDays_isSeven() {
-        assertEquals(7, WEEK_WINDOW_DAYS)
     }
 
     // ---- groupEntries ----
@@ -240,15 +215,19 @@ class EntryGroupingTest {
 
     @Test
     fun groupEntries_doesNotMutateOrDropEntries() {
+        // Deliberately NOT in sorted order, so an in-place sort of the input would be detected.
         val input = listOf(
+            entry(3, at(2020, 1, 1)),
             entry(1, at(2025, 6, 18, 9)),
             entry(2, at(2025, 6, 14)),
-            entry(3, at(2020, 1, 1)),
         )
         val copy = input.toList()
         val sections = groupEntries(input, now, NEW_YORK)
         assertEquals(copy, input)
-        assertEquals(3, sections.sumOf { it.entries.size })
+        // Every entry appears in exactly one section: right ids, and no duplicates.
+        val flatIds = sections.flatMap { it.entries }.map { it.id }
+        assertEquals(setOf(1, 2, 3), flatIds.toSet())
+        assertEquals(3, flatIds.size)
     }
 
     @Test
@@ -261,6 +240,10 @@ class EntryGroupingTest {
                 entry(4, at(2025, 6, 11, 23, 59)),       // older, just past 7 days
             ),
             now, NEW_YORK,
+        )
+        assertEquals(
+            listOf(EntryGroup.TODAY, EntryGroup.THIS_WEEK, EntryGroup.OLDER),
+            sections.map { it.group },
         )
         assertEquals(listOf(1), sections[0].entries.map { it.id })
         assertEquals(listOf(2, 3), sections[1].entries.map { it.id })

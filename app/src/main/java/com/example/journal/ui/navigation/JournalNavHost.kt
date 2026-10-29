@@ -2,6 +2,7 @@ package com.example.journal.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,11 +34,26 @@ import com.example.journal.ui.list.ListScreen
  * Because Save and Delete *pop* instead of navigating forward, Edit is never left in the back
  * stack, so pressing back on Detail can never return to the Edit form.
  *
+ * The theme controls are passed straight through to the List screen, the only screen that shows
+ * them. The theme state itself lives in MainActivity, because the theme wraps this whole NavHost.
+ *
+ * @param isDark Whether the app is currently in dark mode.
+ * @param onToggleDark Switches between light and dark mode.
+ * @param seedColor The applied theme seed color, or null if none has been chosen.
+ * @param onSeedSelected Applies a new seed color (null = back to the default colors).
+ * @param onPreviewSeed Temporarily previews a seed app-wide (null = preview the default colors).
+ * @param onPreviewEnd Ends the preview, going back to the applied seed.
  * @param journalViewModel The shared state holder. It is created here, outside the NavHost, so it
  *   is scoped to the Activity and all three destinations see the same instance and the same data.
  */
 @Composable
 fun JournalNavHost(
+    isDark: Boolean,
+    onToggleDark: () -> Unit,
+    seedColor: Color?,
+    onSeedSelected: (Color?) -> Unit,
+    onPreviewSeed: (Color?) -> Unit,
+    onPreviewEnd: () -> Unit,
     journalViewModel: JournalViewModel = viewModel(factory = JournalViewModel.Factory),
 ) {
     // Created once at the top level. `remember` inside it keeps the same controller across
@@ -58,6 +74,12 @@ fun JournalNavHost(
                 onAddClick = {
                     backStackEntry.ifResumed { navController.navigate(Routes.edit()) }
                 },
+                isDark = isDark,
+                onToggleDark = onToggleDark,
+                seedColor = seedColor,
+                onSeedSelected = onSeedSelected,
+                onPreviewSeed = onPreviewSeed,
+                onPreviewEnd = onPreviewEnd,
             )
         }
 

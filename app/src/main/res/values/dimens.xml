@@ -7,4 +7,9 @@
     <!-- Bottom padding for the List so the last card can scroll clear of the + button:
          16dp FAB margin + 56dp FAB height + 16dp gap. -->
     <dimen name="fab_clearance">88dp</dimen>
+    <!-- Theme picker: size of each color circle, how far neighbours overlap, and border widths. -->
+    <dimen name="seed_circle_size">56dp</dimen>
+    <dimen name="seed_circle_overlap">20dp</dimen>
+    <dimen name="seed_border_selected">3dp</dimen>
+    <dimen name="seed_border_unselected">1dp</dimen>
 </resources>

@@ -19,6 +19,10 @@
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_save">Save</string>
+    <string name="action_apply">Apply</string>
+    <string name="action_switch_to_light">Switch to light theme</string>
+    <string name="action_switch_to_dark">Switch to dark theme</string>
+    <string name="action_change_theme">Change theme color</string>
 
     <!-- List -->
     <string name="list_empty">No entries yet. Tap + to write your first one.</string>
@@ -32,6 +36,21 @@
     <string name="field_title">Title</string>
     <string name="field_body">Entry</string>
     <string name="error_title_required">Title is required</string>
+
+    <!-- Theme picker -->
+    <string name="theme_dialog_title">Theme color</string>
+    <!-- Seed color names; TalkBack reads these aloud for each circle. -->
+    <string name="seed_default">Default</string>
+    <string name="seed_red">Red</string>
+    <string name="seed_pink">Pink</string>
+    <string name="seed_purple">Purple</string>
+    <string name="seed_indigo">Indigo</string>
+    <string name="seed_blue">Blue</string>
+    <string name="seed_teal">Teal</string>
+    <string name="seed_green">Green</string>
+    <string name="seed_amber">Amber</string>
+    <string name="seed_orange">Orange</string>
+    <string name="seed_brown">Brown</string>
 
     <!-- Snackbar messages -->
     <string name="message_entry_created">Entry saved</string>

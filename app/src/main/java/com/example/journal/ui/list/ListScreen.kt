@@ -17,6 +17,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -26,11 +27,15 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -49,6 +54,7 @@ import com.example.journal.ui.UserMessage
 import com.example.journal.ui.common.SnackbarMessageEffect
 import com.example.journal.ui.common.rememberDateFormatter
 import com.example.journal.ui.theme.JournalTheme
+import com.example.journal.ui.theme.ThemePickerDialog
 import java.util.TimeZone
 
 /**
@@ -63,6 +69,12 @@ import java.util.TimeZone
  * @param onMessageShown Called when [message] has been handed to the snackbar.
  * @param onEntryClick Called with the tapped entry's id.
  * @param onAddClick Called when the floating action button is tapped.
+ * @param isDark Whether the app is in dark mode; picks the toggle's icon and label.
+ * @param onToggleDark Called when the light/dark toggle is tapped.
+ * @param seedColor The applied theme seed, or null; the theme picker opens on it.
+ * @param onSeedSelected Called with the seed chosen in the theme picker (null = Default).
+ * @param onPreviewSeed Called while the picker is open to preview a seed (null = preview Default).
+ * @param onPreviewEnd Called when the picker closes, to drop the preview.
  */
 @OptIn(ExperimentalMaterial3Api::class) // TopAppBar is still marked experimental in Material 3.
 @Composable
@@ -72,8 +84,16 @@ fun ListScreen(
     onMessageShown: () -> Unit,
     onEntryClick: (Int) -> Unit,
     onAddClick: () -> Unit,
+    isDark: Boolean,
+    onToggleDark: () -> Unit,
+    seedColor: Color?,
+    onSeedSelected: (Color?) -> Unit,
+    onPreviewSeed: (Color?) -> Unit,
+    onPreviewEnd: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    // Whether the theme picker is open. Screen-local UI state; saveable so it survives rotation.
+    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     // The scroll position lives here (not inside EntryList) so the message effect below can
     // scroll it. rememberLazyListState is saveable, so the position also survives rotation.
     val listState = rememberLazyListState()
@@ -103,7 +123,27 @@ fun ListScreen(
     val sections = remember(entries, today, timeZone) { groupEntries(entries, now, timeZone) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(stringResource(R.string.title_list)) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.title_list)) },
+                actions = {
+                    // The icon shows what tapping will switch *to*: a sun in dark mode, a moon in light.
+                    // These icons aren't in material-icons-core, so they are vector drawables in
+                    // res/drawable, loaded with painterResource.
+                    IconButton(onClick = onToggleDark) {
+                        Icon(
+                            painter = painterResource(if (isDark) R.drawable.ic_light_mode else R.drawable.ic_dark_mode),
+                            contentDescription = stringResource(
+                                if (isDark) R.string.action_switch_to_light else R.string.action_switch_to_dark
+                            ),
+                        )
+                    }
+                    IconButton(onClick = { showThemeDialog = true }) {
+                        Icon(painterResource(R.drawable.ic_palette), contentDescription = stringResource(R.string.action_change_theme))
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddClick) {
                 Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.action_new_entry))
@@ -125,6 +165,17 @@ fun ListScreen(
         } else {
             EntryList(sections, listState, onEntryClick, Modifier.padding(innerPadding))
         }
+    }
+
+    if (showThemeDialog) {
+        ThemePickerDialog(
+            selectedSeed = seedColor,
+            isDark = isDark,
+            onPreview = onPreviewSeed,
+            onPreviewEnd = onPreviewEnd,
+            onApply = onSeedSelected,
+            onDismiss = { showThemeDialog = false },
+        )
     }
 }
 
@@ -226,6 +277,12 @@ private fun ListScreenPreview() {
             onMessageShown = {},
             onEntryClick = {},
             onAddClick = {},
+            isDark = false,
+            onToggleDark = {},
+            seedColor = null,
+            onSeedSelected = {},
+            onPreviewSeed = {},
+            onPreviewEnd = {},
         )
     }
 }
