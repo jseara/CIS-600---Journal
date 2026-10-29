@@ -1,0 +1,39 @@
+<resources>
+    <string name="app_name">Journal</string>
+
+    <!-- Top app bar titles -->
+    <string name="title_list">Journal</string>
+    <string name="title_detail">Entry</string>
+    <string name="title_new_entry">New entry</string>
+    <string name="title_edit_entry">Edit entry</string>
+
+    <!-- List section headers -->
+    <string name="section_today">Today</string>
+    <string name="section_this_week">This Week</string>
+    <string name="section_older">Older</string>
+
+    <!-- Actions and content descriptions -->
+    <string name="action_back">Back</string>
+    <string name="action_new_entry">New entry</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+
+    <!-- List -->
+    <string name="list_empty">No entries yet. Tap + to write your first one.</string>
+
+    <!-- Detail -->
+    <string name="entry_not_found">This entry no longer exists.</string>
+    <string name="delete_dialog_title">Delete this entry?</string>
+    <string name="delete_dialog_text">\"%1$s\" will be removed. This can\'t be undone.</string>
+
+    <!-- Edit -->
+    <string name="field_title">Title</string>
+    <string name="field_body">Entry</string>
+    <string name="error_title_required">Title is required</string>
+
+    <!-- Snackbar messages -->
+    <string name="message_entry_created">Entry saved</string>
+    <string name="message_entry_updated">Changes saved</string>
+</resources>

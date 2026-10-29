@@ -1,2 +1,146 @@
-# CIS-600---Journal
-Assignment 5 for CIS 600, creating a journaling app
+# CIS 600 Journal
+
+Assignment 5 for CIS 600 (Android Development): a multi-screen journal app written in Kotlin with
+Jetpack Compose and Material 3. Its main focus is using Navigation Compose correctly: routes,
+arguments, and sensible back-stack behaviour.
+
+## What the app does
+
+- **List** (start screen): every entry as a Material `Card` (title, one-line body preview, date),
+  grouped under **Today**, **This Week** and **Older** headers in a `LazyColumn`. A floating action
+  button creates a new entry. Tapping a card opens Detail.
+- **Detail**: the full title, date and body. The top bar has a back arrow, an **Edit** action, and a
+  **Delete** action that asks for confirmation in an `AlertDialog`.
+- **Edit**: one screen for both new and existing entries, with `OutlinedTextField`s for the title and
+  body and a **Save** button. Save is disabled while the title is blank, and a "Title is required"
+  error appears once the user has typed and cleared the title.
+- After a save, a `Snackbar` confirms it on the screen the user lands on: List for a new entry,
+  Detail for an edit. After creating an entry, List also scrolls back to the top so the new card
+  (the newest entry in Today) is visible even if the list was scrolled down before tapping +.
+
+The data is an in-memory list held in a `ViewModel`, seeded with 10 entries whose timestamps are
+computed relative to the current time, so all three sections are always populated. Data survives
+rotation but is reset when the app process ends. (The assignment text uses both "JournalItem" and
+"JournalEntry"; this project uses `JournalEntry(id, title, body, timestamp)` throughout.)
+
+## How to run
+
+1. Open the project folder in Android Studio (a recent version that supports AGP 9.4).
+2. Let Gradle sync, then pick an emulator or device running Android 7.0 (API 24) or newer.
+3. Press **Run**, or from a terminal:
+
+   ```sh
+   ./gradlew :app:assembleDebug      # build the APK
+   ./gradlew :app:installDebug       # install it on a connected device or emulator
+   ./gradlew :app:testDebugUnitTest  # run the unit tests
+   ```
+
+## Project layout
+
+```
+app/src/main/java/com/example/journal/
+├── MainActivity.kt              single Activity, hosts JournalNavHost
+├── model/                       JournalEntry, EntryGroup, EntrySection
+├── data/                        pure functions: grouping, id generation, seed data
+└── ui/
+    ├── JournalViewModel.kt      shared in-memory state, save()/SaveOutcome, one-shot snackbar message
+    ├── navigation/              Routes and the single NavHost
+    ├── list/ detail/ edit/      one stateless screen composable each
+    ├── common/                  date formatter, snackbar helper, back button
+    └── theme/                   Material 3 theme (template default)
+```
+
+## Route design
+
+| Screen | Route pattern | Example |
+| --- | --- | --- |
+| List | `list` | `list` |
+| Detail | `detail/{entryId}` (required `Int`) | `detail/4` |
+| Edit | `edit?entryId={entryId}` (optional `Int`, default `-1`) | `edit` (new), `edit?entryId=4` (existing) |
+
+I chose **one Edit route with an optional query argument** (`NavType.IntType`, `defaultValue = -1`)
+rather than two routes (`entry` and `entry/{entryId}`). With one route there is exactly one
+`composable(...)` block for Edit and no risk of the two routes drifting apart. The "new vs.
+existing" decision happens in a single place, `JournalViewModel.save()`, which also treats an id
+that no longer exists as a new entry. Real ids start
+at 1, so `-1` can never be mistaken for an entry. Detail uses a required path argument because it
+makes no sense without an id. All route strings live in `ui/navigation/Routes.kt`, and screens never
+see the `NavController`: they receive lambdas such as `onEntryClick: (Int) -> Unit`, and
+`JournalNavHost` translates those into navigation calls. Detail and Edit look their entry up by id
+in the shared ViewModel's state. Edit doesn't decide "add or update" itself: its Save lambda calls
+`JournalViewModel.save(entryId, title, body)`, which returns a `SaveOutcome` (`Created`, `Updated`
+or `Invalid`), and the NavHost only maps that outcome to a navigation action.
+
+## Back-stack behaviour
+
+The behaviour I wanted is that the back stack only ever holds screens that are worth going back
+to: List at the bottom, optionally Detail above it, and Edit only while the form is actually open.
+Pressing back from Detail should always go to List, never to a form the user has already saved,
+because returning to a stale form would be confusing and could lead to saving the same thing twice.
+To get that, every "finish" action **pops** instead of navigating forward. When Save is tapped, the
+ViewModel's `save()` returns a `SaveOutcome` and the NavHost acts on it. `Updated` calls
+`popBackStack()`, which removes Edit and reveals the Detail screen beneath it (List → Detail → Edit
+becomes List → Detail), so the next back goes to List. `Created` calls
+`popBackStack(Routes.LIST, inclusive = false)`, which lands on List, and List scrolls to the top so
+the new card is visible. `Invalid` (blank title) stays on the form.
+Deleting from Detail uses the same pop to List, so the user is never left on a screen for an entry
+that no longer exists. Because nothing ever navigates *forward* to List or Detail after a save, there
+are no duplicate copies of a screen on the stack. Finally, every navigation lambda is wrapped in an
+`ifResumed` check on the current `NavBackStackEntry`, so a fast double-tap during a transition can't
+push Detail twice or pop past List.
+
+The snackbar has to survive that navigation: each screen has its own `Scaffold` and
+`SnackbarHostState`, so Edit can't show a snackbar on another screen. Instead, saving leaves a
+one-shot `UserMessage` in the shared ViewModel's state; the destination screen (List or Detail)
+shows it and immediately clears it, so it appears once and doesn't reappear on rotation. On List,
+the same message also triggers the scroll to the top. The scroll and the snackbar run in separate
+coroutines, so neither one cancels the other, and the message is still cleared exactly once.
+
+## Decisions made
+
+- **Dependencies** (all in `gradle/libs.versions.toml`):
+  - `androidx.navigation:navigation-compose` **2.10.2** (latest stable).
+  - `androidx.lifecycle:lifecycle-viewmodel-compose` and `lifecycle-runtime-compose` **2.11.0**,
+    sharing one `lifecycle` version key with the existing `lifecycle-runtime-ktx`.
+  - `androidx.compose.material:material-icons-core` (version from the Compose BOM, 1.7.8). Material 3
+    1.4 no longer pulls in the icons, so the Add, Edit, Delete and back arrow icons need it explicitly.
+- **Dates without `java.time`:** minSdk is 24 and `java.time` needs API 26 unless core library
+  desugaring is enabled. I used `java.util.Calendar` for day boundaries and `java.text.DateFormat`
+  (medium date + short time, in the user's locale) for display, so no extra build setup is needed.
+- **"This Week"** means the six calendar days before today, i.e. Today + This Week together are a
+  rolling 7-day window. I chose this over the calendar week (Mon–Sun) because the calendar week makes
+  the section nearly empty early in the week, and its first day differs by locale. Future timestamps
+  count as Today. Each section is sorted newest first, and empty sections are not shown.
+- **Grouping stays current across midnight:** List keeps its own "now", refreshed on every
+  `ON_RESUME` with `LifecycleEventEffect`, and only regroups when `startOfDay(now)` changes (or the
+  entries change). Coming back to the app the next morning moves yesterday's entries out of Today.
+- **Save logic lives in the ViewModel:** `save()` returns a sealed `SaveOutcome`, so the add-or-update
+  rule is unit-testable and the NavHost only handles navigation. It delegates to `addEntry` and
+  `updateEntry`, which stay public.
+- **FAB clearance:** the List has 88dp of bottom content padding (`fab_clearance` in `dimens.xml`:
+  16dp margin + 56dp FAB + 16dp gap), so the last card can scroll above the + button.
+- **Pure, testable logic:** grouping (`groupEntries`), id generation (`nextEntryId`, max id + 1) and
+  seed data (`seedEntries`) are plain functions that take `now` and a `TimeZone` as parameters.
+- **One shared ViewModel**, created with `viewModel(factory = ...)` at the top of `JournalNavHost`,
+  outside the `NavHost`, so it is scoped to the Activity and all three screens share it. Its updates
+  are synchronous (`MutableStateFlow.update`), so it can be tested with plain JUnit.
+- **Editing keeps the original timestamp**, so editing an old entry doesn't move it into Today.
+  Titles are trimmed on save; the body is saved as typed.
+- **The typed text in Edit is local UI state** (`rememberSaveable`), not ViewModel state, because it
+  is a draft until the user taps Save.
+
+## Decisions I was unsure about
+
+- **One Edit route vs. two routes.** Both are allowed. One route felt simpler, but two routes would
+  make the "new" and "edit" URLs read more naturally.
+- **Where "now" comes from for grouping.** List refreshes it when the screen resumes. If the app
+  stays open on List across midnight without ever leaving the screen, the groups only update the
+  next time it resumes or the entries change.
+- **Back from Edit discards changes silently.** There is no "discard changes?" dialog; that seemed
+  beyond the assignment but could be added.
+- **Missing entries.** If Detail or Edit is opened with an id that no longer exists (for example,
+  after the process is killed and the seed data is rebuilt), Detail shows "This entry no longer
+  exists". Edit shows a "New entry" form, and `save()` adds the text as a new entry
+  (`SaveOutcome.Created`), so the draft isn't lost: the user lands on List with "Entry saved".
+- **No snackbar after delete.** The assignment only asks for one after saving, so I left it out,
+  though an "Entry deleted" message (maybe with Undo) would be a natural addition.

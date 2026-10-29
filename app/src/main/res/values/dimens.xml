@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Spacing values shared by all screens, so padding is consistent and defined in one place. -->
+<resources>
+    <dimen name="spacing_xsmall">4dp</dimen>
+    <dimen name="spacing_small">8dp</dimen>
+    <dimen name="spacing_medium">16dp</dimen>
+    <!-- Bottom padding for the List so the last card can scroll clear of the + button:
+         16dp FAB margin + 56dp FAB height + 16dp gap. -->
+    <dimen name="fab_clearance">88dp</dimen>
+</resources>
